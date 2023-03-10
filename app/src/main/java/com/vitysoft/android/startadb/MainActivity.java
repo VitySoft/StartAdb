@@ -6,6 +6,7 @@ import com.google.android.material.snackbar.Snackbar;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.util.Log;
 import android.view.View;
 
 import androidx.navigation.NavController;
@@ -17,6 +18,13 @@ import com.vitysoft.android.startadb.databinding.ActivityMainBinding;
 
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -26,23 +34,57 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        startAdb();
+        finish();
+    }
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
+    private void startAdb() {
+        if (isAdbStarted()) {
+            Log.i("startAdb", "adb 已经启动");
+            Toast.makeText(this, "adb 已经启动", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        try {
+            Process rootShell = Runtime.getRuntime().exec("su");
+            DataOutputStream out = new DataOutputStream(rootShell.getOutputStream());
+            BufferedReader input = new BufferedReader(new InputStreamReader(rootShell.getInputStream()));
+            out.writeBytes("setprop service.adb.tcp.port 5555\n");
+            out.writeBytes("stop adbd\n");
+            out.writeBytes("start adbd\n");
+            out.writeBytes("exit\n");
+            out.flush();
+            String result;
+            do {
+                result = input.readLine(); // 需要等待，直接finish()，没生效
+                if (result != null) {
+                    Log.i("startAdb", result);
+                }
+            } while (result != null);
+            out.close();
+            input.close();
+            Log.i("startAdb", "adb 启动成功");
+            Toast.makeText(this, "adb 启动成功", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e("startAdb", "Failed to start adb.");
+            e.printStackTrace();
+        }
+    }
 
-        setSupportActionBar(binding.toolbar);
-
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
-        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
-
-        binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+    private boolean isAdbStarted() {
+        boolean started = false;
+        try {
+            Process process = Runtime.getRuntime().exec("getprop service.adb.tcp.port");
+            BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String result = input.readLine();
+            if (result != null && result.equals("5555")) {
+                started = true;
             }
-        });
+            input.close();
+        } catch (Exception e) {
+            Log.e("startAdb", "Failed to check isAdbStarted.");
+            e.printStackTrace();
+        }
+        return started;
     }
 
     @Override
