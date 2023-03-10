@@ -28,6 +28,8 @@ import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String TAG = "StartAdb";
+
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
 
@@ -40,14 +42,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void startAdb() {
         if (isAdbStarted()) {
-            Log.i("startAdb", "adb 已经启动");
-            Toast.makeText(this, "adb 已经启动", Toast.LENGTH_SHORT).show();
+            String msg = "adbd is on 5555 already";
+            Log.i(TAG, msg);
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
             return;
         }
         try {
-            Process rootShell = Runtime.getRuntime().exec("su");
-            DataOutputStream out = new DataOutputStream(rootShell.getOutputStream());
-            BufferedReader input = new BufferedReader(new InputStreamReader(rootShell.getInputStream()));
+            Process process = Runtime.getRuntime().exec("su");
+            DataOutputStream out = new DataOutputStream(process.getOutputStream());
+            BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()));
             out.writeBytes("setprop service.adb.tcp.port 5555\n");
             out.writeBytes("stop adbd\n");
             out.writeBytes("start adbd\n");
@@ -55,17 +58,17 @@ public class MainActivity extends AppCompatActivity {
             out.flush();
             String result;
             do {
-                result = input.readLine(); // 需要等待，直接finish()，没生效
+                result = input.readLine();
                 if (result != null) {
-                    Log.i("startAdb", result);
+                    Log.i(TAG, result);
                 }
             } while (result != null);
             out.close();
             input.close();
-            Log.i("startAdb", "adb 启动成功");
-            Toast.makeText(this, "adb 启动成功", Toast.LENGTH_SHORT).show();
+            Log.i(TAG, "Succeeded to start adbd on 5555");
+            Toast.makeText(this, "Succeeded to start adbd on 5555", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            Log.e("startAdb", "Failed to start adb.");
+            Log.e(TAG, "Failed to start adb.");
             e.printStackTrace();
         }
     }
@@ -81,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
             }
             input.close();
         } catch (Exception e) {
-            Log.e("startAdb", "Failed to check isAdbStarted.");
+            Log.e(TAG, "Failed to check isAdbStarted.");
             e.printStackTrace();
         }
         return started;
